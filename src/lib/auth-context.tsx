@@ -7,6 +7,7 @@ interface AuthContextType {
   user: UserSession | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  register: (email: string, password: string, nome: string, tipo: 'cliente' | 'contador') => Promise<void>;
   isLoading: boolean;
 }
 
@@ -110,6 +111,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const register = async (email: string, password: string, nome: string, tipo: 'cliente' | 'contador') => {
+    // Validações
+    if (!email || !password || !nome) {
+      throw new Error('Todos os campos são obrigatórios');
+    }
+
+    if (password.length < 6) {
+      throw new Error('Senha deve ter no mínimo 6 caracteres');
+    }
+
+    if (tipo !== 'cliente') {
+      throw new Error('Apenas clientes podem se auto-cadastrar. Contadores devem ser cadastrados por administradores.');
+    }
+
+    try {
+      // 1. Criar usuário no Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nome,
+            tipo,
+          },
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data.user) {
+        throw new Error('Erro ao criar usuário');
+      }
+
+      // 2. Criar registro em user_roles
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert([
+          {
+            user_id: data.user.id,
+            role: 'cliente',
+          },
+        ]);
+
+      if (roleError) {
+        throw roleError;
+      }
+
+      // 3. Fazer login automático
+      await login(email, password);
+    } catch (error: any) {
+      // Limpar se houve erro
+      console.error('Erro no registro:', error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -117,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
