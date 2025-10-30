@@ -64,12 +64,12 @@ export default function Cadastro() {
       await register(email, senha, nome, 'cliente');
       toast({
         title: "Conta criada com sucesso!",
-        description: "Redirecionando para o login...",
+        description: "Verifique seu email para confirmar o cadastro antes de fazer login.",
         variant: "default"
       });
       setTimeout(() => {
         navigate('/login');
-      }, 2000);
+      }, 3000);
     } catch (error: any) {
       toast({
         title: "Erro ao criar conta",

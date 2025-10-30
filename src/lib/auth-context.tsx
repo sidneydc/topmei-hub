@@ -160,8 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw roleError;
       }
 
-      // 3. Fazer login automático
-      await login(email, password);
+      // Não fazer login automático - usuário precisa confirmar email primeiro
     } catch (error: any) {
       // Limpar se houve erro
       console.error('Erro no registro:', error);
