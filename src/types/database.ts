@@ -69,6 +69,16 @@ export interface CadastroDocumento {
   aprovado_por?: string;
 }
 
+export interface ListaDocumento {
+  id_lista_documento: string;
+  nome_documento: string;
+  descricao?: string;
+  obrigatorio: boolean;
+  regime_tributario?: string;
+  ativo: boolean;
+  ordem: number;
+}
+
 export interface Endereco {
   id_endereco: string;
   id_cadastro: string;
