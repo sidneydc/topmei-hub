@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  topmei-hub:
+    build: .
+    container_name: topmei-hub
+    ports:
+      - "8081:8080" # usa 8081 externamente já que 8080 está ocupada
+    restart: always
+    environment:
+      - NODE_ENV=production
