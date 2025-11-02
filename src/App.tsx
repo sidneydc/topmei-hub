@@ -9,6 +9,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import Login from "./pages/Login";
 import Cadastro from "./pages/cadastro";
 import RecuperarSenha from "./pages/recuperar-senha";
+import RedefinirSenha from "./pages/redefinir-senha";
 
 // Dashboards
 import DashboardCliente from "./pages/DashboardCliente";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+            <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
             {/* Dashboards protegidos */}
             <Route 
