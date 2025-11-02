@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context';
 export default function RecuperarSenha() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { resetPassword } = useAuth() as any;
+  const { resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
