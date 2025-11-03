@@ -11,10 +11,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useClienteData } from '@/hooks/useClienteData';
 
 type CompanyData = any;
 
 export default function DashboardCliente() {
+  const { data: clienteData, isLoading: isLoadingData, error: dataError } = useClienteData();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [cnpj, setCnpj] = useState('');
@@ -23,7 +25,7 @@ export default function DashboardCliente() {
   const [cnpjError, setCnpjError] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState('Clássico'); // Estado para o template de orçamento
+  const [selectedTemplate, setSelectedTemplate] = useState('Clássico');
 
   const tabs = [ { id: 'dashboard', label: 'Dashboard' }, { id: 'cadastro', label: 'Cadastro da Empresa' }, { id: 'servicos', label: 'Serviços' }, { id: 'documentos', label: 'Documentos' }, { id: 'orcamentos', label: 'Configurar Orçamentos' } ];
 
@@ -85,12 +87,196 @@ export default function DashboardCliente() {
     </div>
   );
 
+  if (isLoadingData) {
+    return (
+      <DashboardLayout title="Painel do Cliente" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  const getStatusBadgeVariant = (status: string) => {
+    if (status === 'ativo') return 'default';
+    if (status === 'aguardando_aprovacao') return 'secondary';
+    return 'destructive';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'ativo': 'Ativo',
+      'aguardando_aprovacao': 'Aguardando Aprovação',
+      'rejeitado': 'Rejeitado',
+    };
+    return labels[status] || status;
+  };
+
+  const getDocumentosStats = () => {
+    const total = clienteData.documentos.length;
+    const aprovados = clienteData.documentos.filter(d => d.status_documento === 'aprovado').length;
+    const pendentes = clienteData.documentos.filter(d => d.status_documento === 'pendente_analise').length;
+    const rejeitados = clienteData.documentos.filter(d => d.status_documento === 'rejeitado').length;
+    
+    return { total, aprovados, pendentes, rejeitados };
+  };
+
+  const docStats = getDocumentosStats();
+
   return (
     <DashboardLayout title="Painel do Cliente" tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'dashboard' && <div className="grid grid-cols-1 md:grid-cols-3 gap-6"><StatCard title="Status Cadastro" value="Ativo" description="Aprovado em 15/01" variant="success" /><StatCard title="Plano" value="Super TOPMEI" description="R$ 49,91/mês" variant="warning" /><StatCard title="Documentos" value="1" description="Pendente: RG" variant="destructive" /></div>}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {dataError && (
+            <Card className="p-4 bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800">
+              <p className="text-sm text-red-800 dark:text-red-200">{dataError}</p>
+            </Card>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard 
+              title="Status Cadastro" 
+              value={getStatusLabel(clienteData.cadastro?.status_cadastro || 'aguardando_aprovacao')}
+              description={clienteData.cadastro?.data_aprovacao 
+                ? `Aprovado em ${new Date(clienteData.cadastro.data_aprovacao).toLocaleDateString('pt-BR')}` 
+                : 'Aguardando aprovação'}
+              variant={clienteData.cadastro?.status_cadastro === 'ativo' ? 'success' : 'warning'} 
+            />
+            <StatCard 
+              title="Plano" 
+              value={clienteData.plano?.nome || 'Sem plano'}
+              description={clienteData.plano 
+                ? `R$ ${clienteData.plano.valor.toFixed(2)}/mês` 
+                : 'Nenhum plano contratado'}
+              variant={clienteData.plano ? 'default' : 'warning'}
+            />
+            <StatCard 
+              title="Documentos" 
+              value={`${docStats.aprovados}/${docStats.total}`}
+              description={docStats.pendentes > 0 
+                ? `${docStats.pendentes} pendente(s)` 
+                : docStats.rejeitados > 0 
+                  ? `${docStats.rejeitados} rejeitado(s)` 
+                  : 'Todos aprovados'}
+              variant={docStats.pendentes > 0 || docStats.rejeitados > 0 ? 'destructive' : 'success'} 
+            />
+          </div>
+          {clienteData.cadastro && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Dados da Empresa</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Razão Social</Label>
+                    <p className="font-semibold">{clienteData.cadastro.razao_social || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label>Nome Fantasia</Label>
+                    <p className="font-semibold">{clienteData.cadastro.nome_fantasia || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label>CNPJ</Label>
+                    <p className="font-semibold">{clienteData.cadastro.cnpj || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label>Regime Tributário</Label>
+                    <p className="font-semibold">{clienteData.cadastro.regime_tributario || 'N/A'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
       {activeTab === 'cadastro' && <CadastroTab />}
-      {activeTab === 'servicos' && <div className="space-y-6"><h2 className="text-2xl font-bold">Meus Serviços</h2><Card className="p-6 border-l-4 border-primary"><div className="flex justify-between items-start"><div><h3 className="text-lg font-bold">Super TOPMEI</h3><Badge variant="default" className="mt-2">Ativo</Badge></div><div className="text-right"><p className="text-2xl font-bold text-primary">R$ 49,91</p><p className="text-xs text-muted-foreground">Próx: 15/02/2024</p></div></div></Card></div>}
-      {activeTab === 'documentos' && <div className="space-y-6"><h2 className="text-2xl font-bold">Meus Documentos</h2><Card className="p-4 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800"><p className="text-sm text-blue-800 dark:text-blue-200">1 de 3 docs aprovados</p></Card><div className="grid grid-cols-1 gap-4">{[{ desc: 'CPF', status: 'aprovado' }, { desc: 'RG', status: 'rejeitado' }, { desc: 'Endereço', status: null }].map((doc, i) => (<Card key={i} className="p-6"><div className="flex justify-between items-start mb-4"><h3 className="text-lg font-bold">{doc.desc}</h3>{doc.status === 'aprovado' && <Badge variant="default" className="bg-green-100 text-green-700"><CheckCircle className="h-3 w-3 mr-1" />Aprovado</Badge>}{doc.status === 'rejeitado' && <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejeitado</Badge>}</div>{(!doc.status || doc.status === 'rejeitado') && <Button className="w-full"><Upload className="h-4 w-4 mr-2" />{doc.status === 'rejeitado' ? 'Reenviar' : 'Enviar'}</Button>}</Card>))}</div></div>}
+      {activeTab === 'servicos' && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">Meus Serviços</h2>
+          {clienteData.contratos.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-muted-foreground">Nenhum serviço contratado</p>
+            </Card>
+          ) : (
+            clienteData.contratos.map((contrato) => (
+              <Card key={contrato.id_contrato} className="p-6 border-l-4 border-primary">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-bold">{(contrato as any).servicos?.nome_servico || 'Serviço'}</h3>
+                    <Badge variant="default" className="mt-2">
+                      {getStatusLabel(contrato.status_contrato)}
+                    </Badge>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">
+                      R$ {(contrato.valor_final || 0).toFixed(2)}
+                    </p>
+                    {contrato.data_proximo_vencimento && (
+                      <p className="text-xs text-muted-foreground">
+                        Próx: {new Date(contrato.data_proximo_vencimento).toLocaleDateString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
+      {activeTab === 'documentos' && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">Meus Documentos</h2>
+          <Card className="p-4 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              {docStats.aprovados} de {docStats.total} documento(s) aprovado(s)
+            </p>
+          </Card>
+          {clienteData.documentos.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-muted-foreground">Nenhum documento enviado ainda</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {clienteData.documentos.map((doc) => (
+                <Card key={doc.id_documento} className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold">{doc.tipo_documento || 'Documento'}</h3>
+                      {doc.nome_arquivo_original && (
+                        <p className="text-sm text-muted-foreground">{doc.nome_arquivo_original}</p>
+                      )}
+                    </div>
+                    {doc.status_documento === 'aprovado' && (
+                      <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                        <CheckCircle className="h-3 w-3 mr-1" />Aprovado
+                      </Badge>
+                    )}
+                    {doc.status_documento === 'rejeitado' && (
+                      <Badge variant="destructive">
+                        <XCircle className="h-3 w-3 mr-1" />Rejeitado
+                      </Badge>
+                    )}
+                    {doc.status_documento === 'pendente_analise' && (
+                      <Badge variant="secondary">Pendente</Badge>
+                    )}
+                  </div>
+                  {doc.motivo_rejeicao && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mb-4">
+                      Motivo: {doc.motivo_rejeicao}
+                    </p>
+                  )}
+                  {(doc.status_documento === 'rejeitado' || doc.status_documento === 'pendente_analise') && (
+                    <Button className="w-full">
+                      <Upload className="h-4 w-4 mr-2" />
+                      {doc.status_documento === 'rejeitado' ? 'Reenviar' : 'Atualizar'}
+                    </Button>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {activeTab === 'orcamentos' && (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold">Configurar Orçamentos</h2>
