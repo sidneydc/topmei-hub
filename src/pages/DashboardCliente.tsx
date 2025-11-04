@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { StatCard } from '@/components/ui/stat-card';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, CheckCircle, XCircle, Image as ImageIcon, Trash2, Search, Loader2, Users, Building, Briefcase, FileText, Phone, Mail, Landmark, Info } from 'lucide-react';
+import { Upload, CheckCircle, XCircle, Image as ImageIcon, Trash2, Search, Loader2, Users, Building, Briefcase, FileText, Phone, Mail, Landmark, Info, Eye, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +11,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useClienteData } from '@/hooks/useClienteData';
+import { useDocumentUpload } from '@/hooks/useDocumentUpload';
+import { useAuth } from '@/lib/auth-context';
 
 type CompanyData = any;
 
 export default function DashboardCliente() {
+  const { user } = useAuth();
   const { data: clienteData, isLoading: isLoadingData, error: dataError } = useClienteData();
+  const { uploadDocument, progress } = useDocumentUpload();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [cnpj, setCnpj] = useState('');
@@ -113,12 +118,52 @@ export default function DashboardCliente() {
   };
 
   const getDocumentosStats = () => {
-    const total = clienteData.documentos.length;
-    const aprovados = clienteData.documentos.filter(d => d.status_documento === 'aprovado').length;
-    const pendentes = clienteData.documentos.filter(d => d.status_documento === 'pendente_analise').length;
-    const rejeitados = clienteData.documentos.filter(d => d.status_documento === 'rejeitado').length;
+    const total = clienteData.documentosStatus.length;
+    const aprovados = clienteData.documentosStatus.filter(d => d.status_geral === 'aprovado').length;
+    const pendentes = clienteData.documentosStatus.filter(d => d.status_geral === 'pendente_analise').length;
+    const rejeitados = clienteData.documentosStatus.filter(d => d.status_geral === 'rejeitado').length;
+    const naoEnviados = clienteData.documentosStatus.filter(d => d.status_geral === 'nao_enviado').length;
     
-    return { total, aprovados, pendentes, rejeitados };
+    return { total, aprovados, pendentes, rejeitados, naoEnviados };
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprovado':
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Aprovado</Badge>;
+      case 'pendente_analise':
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">Aguardando Análise</Badge>;
+      case 'rejeitado':
+        return <Badge className="bg-red-500 hover:bg-red-600 text-white">Rejeitado</Badge>;
+      case 'nao_enviado':
+        return <Badge variant="secondary">Não Enviado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const handleUpload = async (listaDocId: string, nomeDoc: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.jpg,.jpeg,.png,.webp';
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const result = await uploadDocument(
+        user?.id_cadastro || '',
+        listaDocId,
+        file,
+        nomeDoc
+      );
+      
+      if (result.success) {
+        window.location.reload();
+      }
+    };
+    
+    input.click();
   };
 
   const docStats = getDocumentosStats();
@@ -152,12 +197,14 @@ export default function DashboardCliente() {
             <StatCard 
               title="Documentos" 
               value={`${docStats.aprovados}/${docStats.total}`}
-              description={docStats.pendentes > 0 
-                ? `${docStats.pendentes} pendente(s)` 
-                : docStats.rejeitados > 0 
-                  ? `${docStats.rejeitados} rejeitado(s)` 
-                  : 'Todos aprovados'}
-              variant={docStats.pendentes > 0 || docStats.rejeitados > 0 ? 'destructive' : 'success'} 
+              description={docStats.naoEnviados > 0 
+                ? `${docStats.naoEnviados} não enviado(s)` 
+                : docStats.pendentes > 0 
+                  ? `${docStats.pendentes} pendente(s)` 
+                  : docStats.rejeitados > 0 
+                    ? `${docStats.rejeitados} rejeitado(s)` 
+                    : 'Todos aprovados'}
+              variant={docStats.naoEnviados > 0 || docStats.pendentes > 0 || docStats.rejeitados > 0 ? 'warning' : 'success'} 
             />
           </div>
           {clienteData.cadastro && (
@@ -228,49 +275,94 @@ export default function DashboardCliente() {
           <h2 className="text-2xl font-bold">Meus Documentos</h2>
           <Card className="p-4 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              {docStats.aprovados} de {docStats.total} documento(s) aprovado(s)
+              {docStats.aprovados} de {docStats.total} documento(s) aprovado(s) • {docStats.naoEnviados} não enviado(s)
             </p>
           </Card>
-          {clienteData.documentos.length === 0 ? (
+          {clienteData.documentosStatus.length === 0 ? (
             <Card className="p-6">
-              <p className="text-muted-foreground">Nenhum documento enviado ainda</p>
+              <p className="text-muted-foreground">Nenhum documento solicitado.</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {clienteData.documentos.map((doc) => (
-                <Card key={doc.id_documento} className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold">{doc.tipo_documento || 'Documento'}</h3>
-                      {doc.nome_arquivo_original && (
-                        <p className="text-sm text-muted-foreground">{doc.nome_arquivo_original}</p>
-                      )}
+              {clienteData.documentosStatus.map((doc) => (
+                <Card key={doc.id_lista_documento}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          {doc.nome_documento}
+                          {doc.obrigatorio && (
+                            <Badge variant="outline" className="text-xs">Obrigatório</Badge>
+                          )}
+                        </CardTitle>
+                        {doc.descricao && (
+                          <CardDescription className="mt-1">{doc.descricao}</CardDescription>
+                        )}
+                      </div>
+                      {getStatusBadge(doc.status_geral)}
                     </div>
-                    {doc.status_documento === 'aprovado' && (
-                      <Badge variant="default" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
-                        <CheckCircle className="h-3 w-3 mr-1" />Aprovado
-                      </Badge>
-                    )}
-                    {doc.status_documento === 'rejeitado' && (
-                      <Badge variant="destructive">
-                        <XCircle className="h-3 w-3 mr-1" />Rejeitado
-                      </Badge>
-                    )}
-                    {doc.status_documento === 'pendente_analise' && (
-                      <Badge variant="secondary">Pendente</Badge>
-                    )}
-                  </div>
-                  {doc.motivo_rejeicao && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mb-4">
-                      Motivo: {doc.motivo_rejeicao}
-                    </p>
-                  )}
-                  {(doc.status_documento === 'rejeitado' || doc.status_documento === 'pendente_analise') && (
-                    <Button className="w-full">
-                      <Upload className="h-4 w-4 mr-2" />
-                      {doc.status_documento === 'rejeitado' ? 'Reenviar' : 'Atualizar'}
-                    </Button>
-                  )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    <div className="space-y-3">
+                      {doc.nome_arquivo_original && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Arquivo: </span>
+                          <span className="font-medium">{doc.nome_arquivo_original}</span>
+                        </div>
+                      )}
+                      
+                      {doc.data_upload && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Enviado em: </span>
+                          <span className="font-medium">
+                            {new Date(doc.data_upload).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {doc.motivo_rejeicao && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            <strong>Motivo da rejeição:</strong> {doc.motivo_rejeicao}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <div className="flex gap-2 pt-2">
+                        {doc.status_geral === 'nao_enviado' && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleUpload(doc.id_lista_documento, doc.nome_documento)}
+                            disabled={progress.isUploading}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {progress.isUploading ? 'Enviando...' : 'Enviar Documento'}
+                          </Button>
+                        )}
+                        
+                        {doc.status_geral === 'rejeitado' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleUpload(doc.id_lista_documento, doc.nome_documento)}
+                            disabled={progress.isUploading}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {progress.isUploading ? 'Enviando...' : 'Reenviar Documento'}
+                          </Button>
+                        )}
+                        
+                        {(doc.status_geral === 'aprovado' || doc.status_geral === 'pendente_analise') && doc.nome_arquivo_original && (
+                          <Button size="sm" variant="outline">
+                            <Eye className="w-4 h-4 mr-2" />
+                            Visualizar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
               ))}
             </div>

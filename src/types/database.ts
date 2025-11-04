@@ -161,6 +161,22 @@ export interface Plano {
   ativo: boolean;
 }
 
+export interface DocumentoStatus {
+  id_lista_documento: string;
+  nome_documento: string;
+  descricao?: string;
+  obrigatorio: boolean;
+  ordem: number;
+  // Campos do documento enviado (se existir)
+  id_documento?: string;
+  status_documento?: 'pendente_analise' | 'aprovado' | 'rejeitado';
+  nome_arquivo_original?: string;
+  data_upload?: string;
+  motivo_rejeicao?: string;
+  // Status combinado
+  status_geral: 'nao_enviado' | 'pendente_analise' | 'aprovado' | 'rejeitado';
+}
+
 export interface UserSession {
   user_id: string;
   email: string;

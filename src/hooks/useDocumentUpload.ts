@@ -10,7 +10,7 @@ interface UploadProgress {
 interface UseDocumentUploadReturn {
   uploadDocument: (
     clienteId: string,
-    listaDocumentoId: number,
+    listaDocumentoId: string,
     file: File,
     documentoNome: string
   ) => Promise<{ success: boolean; url?: string }>;
@@ -35,7 +35,7 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
 
   const uploadDocument = async (
     clienteId: string,
-    listaDocumentoId: number,
+    listaDocumentoId: string,
     file: File,
     documentoNome: string
   ) => {
