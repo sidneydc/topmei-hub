@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { Navigate } from 'react-router-dom';
-import DashboardCliente from './DashboardCliente';
+import DashboardCliente from './DashboardCliente/index';
 import DashboardContador from './DashboardContador';
 import DashboardAdmin from './DashboardAdmin';
 

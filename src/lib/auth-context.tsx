@@ -9,6 +9,7 @@ interface AuthContextType {
   logout: () => void;
   register: (email: string, password: string, nome: string, tipo: 'cliente' | 'contador') => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -48,11 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUserData = async (authUser: User) => {
     try {
       // Buscar role do usuário
-      const { data: userRole } = await supabase
+      const { data: userRole, error: userRoleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', authUser.id)
         .single();
+
+      if (userRoleError) {
+        console.error('Erro ao buscar role em user_roles:', userRoleError);
+      }
 
       const role = (userRole?.role as AppRole) || 'cliente';
 
@@ -65,15 +70,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (role === 'cliente') {
-        const { data: cadastro } = await supabase
+        // Allow multiple cadastros per user; prefer first as primary
+        const { data: cadastros, error: cadastrosError } = await supabase
           .from('cadastros_clientes')
-          .select('id_cadastro, razaoSocial')
-          .eq('criado_por', authUser.email)
-          .single();
+          .select('*')
+          .eq('criado_por', authUser.email);
 
-        if (cadastro) {
-          userData.id_cadastro = cadastro.id_cadastro;
-          userData.nome = cadastro.razaoSocial;
+        if (cadastrosError) {
+          console.error('Erro ao buscar cadastros_clientes:', cadastrosError);
+        }
+
+        if (cadastros && cadastros.length > 0) {
+          // attach full list and pick first as primary
+          (userData as any).cadastros = cadastros;
+          userData.id_cadastro = cadastros[0].id_cadastro;
+          userData.nome = cadastros[0].razao_social || userData.nome;
         }
       } else if (role === 'contador' || role === 'admin') {
         const { data: profissional } = await supabase
@@ -175,6 +186,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
+  // Exposed helper to reload user data from Supabase (re-runs loadUserData)
+  const refreshUser = async () => {
+    try {
+      if (session?.user) {
+        await loadUserData(session.user);
+      } else {
+        // Try to get current session if not set
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (s?.user) {
+          await loadUserData(s.user);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar dados do usuário:', err);
+    }
+  };
+
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
@@ -186,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, resetPassword, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, resetPassword, refreshUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
