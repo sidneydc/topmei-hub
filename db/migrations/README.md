@@ -1,48 +1,60 @@
-# Banco de Dados — migrações e orientação
+# 🗂️ Database Migrations
 
-Este diretório contém documentação e artefatos pensados para uso com o Supabase (Postgres + Auth + Storage).
-Coloquei dois arquivos principais:
+Esta pasta contém a documentação e scripts SQL para o banco de dados do sistema.
 
-- `supabase_sqleditor.sql` — um SQL completo (DDL) que cria as tabelas usadas pela aplicação e inclui comentários e sugestões de políticas RLS. Pode colar direto no SQL Editor do Supabase e executar (revise antes de aplicar em produção).
-- `README.md` (este arquivo) — documentação rápida sobre o propósito das tabelas, como usar o arquivo SQL e notas operacionais (RLS, buckets, recomendações).
+## 📁 Estrutura
 
-Resumo do modelo (visão alta)
+```
+db/migrations/
+├── DOCUMENTACAO.md        # 📚 Documentação completa do aplicativo
+├── SCHEMA_COMPLETO.sql    # 🗄️ Script SQL para recriação do banco
+└── _archive/              # 📦 Arquivos antigos (histórico)
+```
 
-- `cadastros_clientes`: cadastro das empresas/cliente do sistema. Contém CNPJ, razão social, status do cadastro e metadados de auditoria.
-- `contratos`: contratos/assinaturas atrelados a um `id_cadastro` e a um plano/serviço, com valores e status.
-- `user_roles`: vincula um `user_id` (do Auth) a um papel (role) dentro da plataforma — ex.: `cliente`, `contador`, `admin`.
-- `planos`: planos comerciais oferecidos (nome, descrição, preço, ativo).
-- `certificados`: metadados sobre certificados digitais enviados (file_path no bucket `certificados`, senha, etc.).
-- `notas_servico`: registro de NF de serviço emitida/registrada (metadados armazenados no DB; processamento real da NF pode ser externo).
-- `lista_documentos`: lista de documentos que o sistema pode solicitar (RG, CPF, contrato social, etc.).
-- `cadastros_documentos`: associação entre um cadastro e o documento solicitado/enviado (status, arquivo, data de upload, motivo de rejeição).
+## 🚀 Como Usar
 
-Notas operacionais
+### Para criar o banco do zero:
 
-1. RLS (Row-Level Security)
-   - A aplicação usa Supabase Auth. Para segurança em produção, habilite RLS nas tabelas e crie políticas que limitem leituras/escritas apenas aos usuários/autorizados.
-   - O arquivo SQL inclui exemplos comentados de políticas (ex.: permitir que um usuário autenticado insira um cadastro e que um `id_cadastro` seja lido apenas pelo usuário dono ou pelo escritório responsável).
+1. Abra o **SQL Editor** no Supabase
+2. Cole o conteúdo de `SCHEMA_COMPLETO.sql`
+3. Execute o script
+4. Configure os buckets de storage (se necessário via UI)
+5. Ative as políticas RLS descomentando as linhas necessárias
 
-2. Buckets (Storage)
-   - Buckets esperados (usados no código): `certificados` (para certificados digitais), possivelmente `documentos` (para uploads de documentos). Verifique `src/hooks/useDocumentUpload.ts` e onde `supabase.storage.from(...)` é chamado para confirmar nomes.
+### Para entender o sistema:
 
-3. Chaves/Identificadores
-   - O SQL usa `uuid` para chaves primárias (com `gen_random_uuid()`); o Supabase normalmente já tem a extensão `pgcrypto` disponível, mas o SQL inclui o `CREATE EXTENSION` por segurança.
+1. Leia `DOCUMENTACAO.md` — contém:
+   - Visão geral da arquitetura
+   - Modelo de dados completo
+   - Fluxos de usuário
+   - Regras de negócio
+   - Configurações necessárias
 
-4. Migrations e deploy
-   - Para pequenos testes, cole o conteúdo de `supabase_sqleditor.sql` no SQL Editor do projeto Supabase e execute.
-   - Para automação (CI), converta os DDL em arquivos de migração versionados que serão aplicados ao banco.
+## 📝 Manutenção
 
-5. Ajustes esperados
-   - Tipos e constraints podem ser ajustados conforme necessidades (ex.: índices, FK adicionais, tamanhos de campos, unique constraints para cnpj, etc.).
-   - Se a política de autenticação exigir que `user_roles` referencie `auth.users`, adicione checks/policies apropriadas.
+Quando houver alterações no banco:
 
-6. Referências no repositório
-   - Há uma migração adicional em `db/migrations/20251104_add_cadastros_clientes_columns.sql` (se existir) — mantenha coerência entre migrações.
+1. **Atualizar** `SCHEMA_COMPLETO.sql` com as mudanças
+2. **Documentar** as alterações em `DOCUMENTACAO.md`
+3. **Criar migration incremental** (opcional): `db/migrations/YYYY-MM-DD_descricao.sql`
+4. **Atualizar versão** no cabeçalho do SQL
 
-Se quiser, eu:
-- Executo agora um patch que cria um `schema` mais detalhado ou adiciono migrações versioneadas separadas.
-- Ajusto as políticas RLS ao modelo de autorização que vocês usam (por exemplo: `criado_por = auth.email` ou `user_id = auth.uid`).
+## 🔐 Segurança
+
+- ⚠️ **NUNCA** commit senhas ou chaves de API
+- ✅ Sempre usar **RLS (Row Level Security)** em produção
+- ✅ Validar permissões via **Security Definer Functions**
+- ✅ Armazenar roles em **tabela separada** (nunca em localStorage)
+
+## 📦 Pasta _archive/
+
+Contém arquivos antigos e scripts utilitários:
+- Versões anteriores do schema
+- Scripts de export/import
+- Documentação histórica
+
+Mantido para referência e rollback se necessário.
 
 ---
-Gerado em: 2025-11-04
+
+**Última atualização**: 2025-11-06
