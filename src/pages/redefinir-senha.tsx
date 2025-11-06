@@ -20,16 +20,12 @@ export default function RedefinirSenha() {
   const [tokenValido, setTokenValido] = useState(false);
 
   useEffect(() => {
-    // Ao chegar nesta página via link de recuperação do Supabase, o token/ sessão
-    // pode estar presente na URL. Devemos extrair a sessão da URL antes de
-    // tentar obter a sessão local. O método getSessionFromUrl() trata disso.
+    // Verifica se há uma sessão válida (o Supabase automaticamente processa tokens da URL)
     const checkRecoverySession = async () => {
       try {
-        // Tenta extrair e aplicar a sessão presente na URL (hash ou query)
-        const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
-        if (error) {
-          // Se houver erro ou não vier sessão, considerar link inválido
-          console.warn('getSessionFromUrl error:', error);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error || !session) {
           toast({
             title: "Link inválido ou expirado",
             description: "Por favor, solicite um novo link de recuperação",
@@ -39,18 +35,7 @@ export default function RedefinirSenha() {
           return;
         }
 
-        const session = data?.session ?? null;
-        if (session) {
-          setTokenValido(true);
-        } else {
-          // Caso não exista sessão após parse, informar e redirecionar
-          toast({
-            title: "Link inválido ou expirado",
-            description: "Por favor, solicite um novo link de recuperação",
-            variant: "destructive"
-          });
-          setTimeout(() => navigate('/recuperar-senha'), 2000);
-        }
+        setTokenValido(true);
       } catch (err) {
         console.error('Erro ao validar token de recuperação:', err);
         toast({

@@ -111,6 +111,8 @@ export function useClienteData() {
           nome_arquivo_original: docEnviado?.nome_arquivo_original,
           data_upload: docEnviado?.data_upload,
           motivo_rejeicao: docEnviado?.motivo_rejeicao,
+          bucket_nome: docEnviado?.bucket_nome,
+          chave_bucket: docEnviado?.chave_bucket,
           status_geral: docEnviado ? docEnviado.status_documento : 'nao_enviado'
         };
       });

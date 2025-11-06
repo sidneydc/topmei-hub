@@ -190,11 +190,11 @@ export default function DocumentosTab({ clienteData, onUploaded }: Props) {
                             const bucket = doc.bucket_nome || (import.meta.env.VITE_DOCUMENTS_BUCKET as string) || 'documentos-clientes';
                             const chave = doc.chave_bucket as string;
                             const { data: signed, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(chave, 60);
-                            if (signedError || !signed?.signedURL) {
+                            if (signedError || !signed?.signedUrl) {
                               const { data: pub } = supabase.storage.from(bucket).getPublicUrl(chave);
                               window.open(pub.publicUrl, '_blank');
                             } else {
-                              window.open(signed.signedURL, '_blank');
+                              window.open(signed.signedUrl, '_blank');
                             }
                           } catch (e) {
                             console.error('Erro ao obter URL do arquivo:', e);
@@ -209,7 +209,7 @@ export default function DocumentosTab({ clienteData, onUploaded }: Props) {
                             const bucket = doc.bucket_nome || (import.meta.env.VITE_DOCUMENTS_BUCKET as string) || 'documentos-clientes';
                             const chave = doc.chave_bucket as string;
                             const { data: signed, error: signedError } = await supabase.storage.from(bucket).createSignedUrl(chave, 60);
-                            const url = (signedError || !signed?.signedURL) ? (supabase.storage.from(bucket).getPublicUrl(chave).data.publicUrl) : signed.signedURL;
+                            const url = (signedError || !signed?.signedUrl) ? (supabase.storage.from(bucket).getPublicUrl(chave).data.publicUrl) : signed.signedUrl;
                             // trigger download
                             const a = document.createElement('a');
                             a.href = url as string;

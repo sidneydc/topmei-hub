@@ -173,6 +173,8 @@ export interface DocumentoStatus {
   nome_arquivo_original?: string;
   data_upload?: string;
   motivo_rejeicao?: string;
+  bucket_nome?: string;
+  chave_bucket?: string;
   // Status combinado
   status_geral: 'nao_enviado' | 'pendente_analise' | 'aprovado' | 'rejeitado';
 }
