@@ -27,7 +27,7 @@ const ALLOWED_TYPES = [
 ];
 
 // Bucket name for client documents. Make configurable via Vite env: VITE_DOCUMENTS_BUCKET
-const DOCS_BUCKET = (import.meta.env.VITE_DOCUMENTS_BUCKET as string) || 'documentos-clientes';
+const DOCS_BUCKET = 'cus_doc';
 
 export function useDocumentUpload(): UseDocumentUploadReturn {
   const { toast } = useToast();
@@ -40,6 +40,10 @@ export function useDocumentUpload(): UseDocumentUploadReturn {
     documentoNome: string
   ) => {
     try {
+      if (!clienteId) {
+        toast({ title: 'Erro de Autenticação', description: 'Usuário não identificado. Faça login novamente.', variant: 'destructive' });
+        return { success: false };
+      }
       // Validações
       if (!file) {
         toast({ title: 'Erro', description: 'Nenhum arquivo selecionado', variant: 'destructive' });
