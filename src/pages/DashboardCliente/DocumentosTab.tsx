@@ -3,12 +3,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import type { DocumentoStatus } from '@/types/database';
-
-// [MODIFICAÇÃO] Importe o novo componente do local correto
 import DocumentoCard from '@/components/documentos/DocumentoCard';
 
-// [REMOVIDO] Não precisamos mais de 'OutroDocumentoCard'
-// [REMOVIDO] Não precisamos mais de hooks, ícones ou componentes de UI extras aqui
+// 👇 ADICIONE ESTAS DUAS IMPORTAÇÕES
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 type Props = {
   clienteData: { documentosStatus?: DocumentoStatus[] } | any;
@@ -19,9 +18,7 @@ export default function DocumentosTab({ clienteData, onUploaded }: Props) {
   const { user } = useAuth();
   const [filterStatus, setFilterStatus] = useState<'all' | string>('all');
   const [obrigatorioFilter, setObrigatorioFilter] = useState<'all' | 'obrigatorio' | 'opcional'>('all');
-  
-  // [REMOVIDO] Toda a lógica de upload (refs, openFilePicker, getStatusBadge) 
-  // foi movida para o componente DocumentoCard.
+
 
   if (!clienteData || !clienteData.documentosStatus) {
     return (
@@ -38,6 +35,7 @@ export default function DocumentosTab({ clienteData, onUploaded }: Props) {
 
   return (
     <div className="space-y-6">
+      
       <h2 className="text-2xl font-bold">Meus Documentos</h2>
       <Card className="p-4 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
         <p className="text-sm text-blue-800 dark:text-blue-200">

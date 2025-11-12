@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserData = async (authUser: User) => {
     try {
-      // Buscar role do usuário
+      // 1. Buscar role do usuário (Como estava no seu original)
       const { data: userRole, error: userRoleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -59,9 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Erro ao buscar role em user_roles:', userRoleError);
       }
 
+      // 2. Definir o 'role' (Como estava no seu original)
       const role = (userRole?.role as AppRole) || 'cliente';
 
-      // Buscar dados adicionais baseado no role
+      // 3. Definir o objeto 'userData' base (Corrigido, sem o 'id:')
       let userData: UserSession = {
         user_id: authUser.id,
         email: authUser.email!,
@@ -69,24 +70,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
       };
 
+      // 4. [AQUI ESTÁ A LÓGICA CORRETA]
+      // Buscar dados do cliente *depois* de definir o role e o userData
       if (role === 'cliente') {
-        // Allow multiple cadastros per user; prefer first as primary
+        
+        // [CORREÇÃO 1: Buscar por 'user_id' em vez de 'criado_por']
         const { data: cadastros, error: cadastrosError } = await supabase
           .from('cadastros_clientes')
           .select('*')
-          .eq('criado_por', authUser.email);
+          .eq('user_id', authUser.id); // <-- A correção de login
 
         if (cadastrosError) {
           console.error('Erro ao buscar cadastros_clientes:', cadastrosError);
         }
 
         if (cadastros && cadastros.length > 0) {
-          // attach full list and pick first as primary
           (userData as any).cadastros = cadastros;
           userData.id_cadastro = cadastros[0].id_cadastro;
           userData.nome = cadastros[0].razao_social || userData.nome;
+          
+          // [CORREÇÃO 2: Adicionar o 'id_escritorio' para o upload]
+          userData.id_escritorio = cadastros[0].id_escritorio; 
         }
       } else if (role === 'contador' || role === 'admin') {
+        // ... (Sua lógica de contador permanece a mesma)
         const { data: profissional } = await supabase
           .from('profissionais')
           .select('id_profissional, nome_profissional, profissionais_escritorios(id_escritorio)')
@@ -102,12 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // 5. Definir o usuário (Como estava no seu original)
       setUser(userData);
     } catch (error) {
       console.error('Erro ao carregar dados do usuário:', error);
     }
   };
 
+  // ... (O resto do seu arquivo: login, register, logout, etc. não muda) ...
   const login = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
