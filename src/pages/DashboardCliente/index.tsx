@@ -169,13 +169,26 @@ export default function DashboardCliente() {
       }
 
       alert('Cadastro criado com sucesso. Aguardando aprovação.');
-      await refetch();
+
+      // 1. [CORREÇÃO] Atualiza o 'user' PRIMEIRO
       try {
         if (refreshUser) await refreshUser();
       } catch (e) {
         console.error('Erro ao atualizar usuário após cadastro:', e);
       }
+
+      // 2. [CORREÇÃO] Recarrega os dados do cliente DEPOIS
+      await refetch();
+
+      // 3. [MELHORIA] Limpa o formulário e muda para a aba do dashboard
+      setCompanyData(null);
+      setCnpj('');
+      setSelectedPlan('');
+      setTermsAccepted(false);
+      setActiveTab('dashboard'); // <-- Leva o usuário para o dashboard
+
     } catch (err) {
+// ...
       console.error('Erro no fluxo de cadastro:', err);
       alert('Erro ao processar cadastro. Veja console para detalhes.');
     }
@@ -458,13 +471,19 @@ export default function DashboardCliente() {
               variant={docStats.naoEnviados > 0 || docStats.pendentes > 0 || docStats.rejeitados > 0 ? 'warning' : 'success'} 
             />
           </div>
+        
+        {/* 👇 [BLOCO MODIFICADO] Começa aqui */}
           {clienteData.cadastro && (
             <Card>
               <CardHeader>
                 <CardTitle>Dados da Empresa</CardTitle>
+                <CardDescription>
+                  Resumo dos dados cadastrais da sua empresa principal.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-4">
+              <CardContent className="space-y-4">
+              {/* Seção Principal */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <Label>Razão Social</Label>
                     <p className="font-semibold">{clienteData.cadastro.razao_social || 'N/A'}</p>
@@ -481,10 +500,46 @@ export default function DashboardCliente() {
                     <Label>Regime Tributário</Label>
                     <p className="font-semibold">{clienteData.cadastro.regime_tributario || 'N/A'}</p>
                   </div>
+                  <div>
+                    <Label>Status do Cadastro</Label>
+                    <p className="font-semibold">
+                      {/* Usando as funções que você já tem no arquivo */}
+                      <Badge variant={getStatusBadgeVariant(clienteData.cadastro.status_cadastro)}>
+                        {getStatusLabel(clienteData.cadastro.status_cadastro)}
+                      </Badge>
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Data de Criação</Label>
+                    <p className="font-semibold">
+                      {clienteData.cadastro.data_criacao ? new Date(clienteData.cadastro.data_criacao).toLocaleString('pt-BR') : 'N/A'}
+                    </p>
+                  </div>
                 </div>
+
+              {/* Seção Adicional (só aparece se houver dados) */}
+              {(clienteData.cadastro.data_aprovacao || clienteData.cadastro.motivo_rejeicao) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm border-t pt-4">
+                  {clienteData.cadastro.data_aprovacao && (
+                    <div>
+                      <Label>Data de Aprovação</Label>
+                      <p className="font-semibold">
+                        {new Date(clienteData.cadastro.data_aprovacao).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                  )}
+                  {clienteData.cadastro.motivo_rejeicao && (
+                    <div className="col-span-2">
+                      <Label>Motivo da Rejeição</Label>
+                      <p className="font-semibold text-red-600">{clienteData.cadastro.motivo_rejeicao}</p>
+                    </div>
+                  )}
+                </div>
+              )}
               </CardContent>
             </Card>
           )}
+          {/* [FIM DO BLOCO MODIFICADO] */}
         </div>
       )}
       {activeTab === 'cadastro' && (
